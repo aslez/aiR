@@ -1,0 +1,18 @@
+Package: aiR
+Date: 2014-11-07
+Title: Areal interpolation and geographic aggregation
+Version: 0.1
+Authors@R: person("Adam", "Slez", email = "aslez@virginia.edu",
+    role = c("aut", "cre"))
+Description: This package provides basic tools for areal interpolation and
+    geographic aggregation.  Interpolation tools are not currently available.
+    Aggregation is based on the identification of common geographies or
+    "clusters," as per the method outlined by Slez, O'Connell, and Curtis
+    (2014).
+Depends: R (>= 3.1.1)
+License: MIT + file LICENSE
+LazyData: true
+Imports: igraph, dplyr, tidyr, rgeos
+Packaged: 2015-01-23 18:09:48 UTC; Adam
+Author: Adam Slez [aut, cre]
+Maintainer: Adam Slez <aslez@virginia.edu>
