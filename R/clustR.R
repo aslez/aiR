@@ -19,7 +19,9 @@
 #'\code{length(plist) > 1}, then \code{plist} should contain the original
 #'paritions.  Otherwise, \code{plist} should contain a
 #'\code{SpatialPolygonsDataFrame} or a \code{data.frame} depicting the
-#'intersection between partitions.
+#'intersection between partitions.  WARNING!!  PROCEED WITH EXTREME CAUTION WHEN
+#'WORKING WITH ORIGINAL PARTITIONS.  CHANGES IN THE RGEOS INTERSECTION ROUTINE 
+#'ARE CAUSING POLYGONS TO BE DROPPED, LEADING TO INCORRECT CLUSTERS. 
 #'
 #'@param nid A character vector containing the column names used to identify
 #'groups within each partition.  This is only required when starting with 
