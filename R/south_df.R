@@ -12,7 +12,7 @@
 #' \itemize{
 #'   \item ID1860. NHGIS identifier (GISJOIN) for 1860.
 #'   \item ID2000. NHGIS identifier (GISJOIN) for 2000.
-#'   \item y1930.  Area of overlap measured in square miles.
+#'   \item AREA.  Area of overlap measured in square miles.
 #' }
 #' @source \url{https://www.nhgis.org/}
 NULL
