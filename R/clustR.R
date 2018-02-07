@@ -2,26 +2,28 @@
 #'
 #'\code{clustR} identifies common geographies based on patterns of group overlap.
 #'Input can take one of two forms: partitions or intersections.  A set of
-#'partitions is represented by a list of \code{SpatialPolygonsDataFrame}
-#'objects, each of which is composed of a set of areal units
-#'(e.g., counties, census tracts).  To identify common geographies \code{clustR}
-#'calculates the intersection of these partitions.  This can be very slow
-#'depending on the number of observations and the detail of the underlying
-#'boundary files.  Alternatively, intersections can be calculated using a
-#'dedicated GIS (e.g., ArcGIS, QGIS) and then passesd to \code{clustR} 
-#'(recommended).  Intersections are represented as a list containing a single 
+#'partitions is represented by a list of two or more 
+#'\code{SpatialPolygonsDataFrame} objects, each of which is composed of a set 
+#'of areal units (e.g., counties, census tracts).  To identify common 
+#'geographies \code{clustR} calculates the intersection of these partitions.  
+#'This can be very slow depending on the number of observations and the 
+#'resolution of the underlying boundary files.  Alternatively, intersections 
+#'can be calculated using a dedicated GIS (e.g., ArcGIS, QGIS) and then passesd 
+#'to \code{clustR} (recommended).  Intersections are represented as a single 
 #'object.  This can be either a \code{SpatialPolygonsDataFrame} object or a
-#'\code{data.frame} object.  \code{mp_shp} and \code{mp_int} are internal helper
-#'functions used to construct properly formatted membership profiles.
+#'\code{data.frame} object.  \code{mp_shp} and \code{mp_int} are internal 
+#'helper functions used to construct properly formatted membership profiles.
 
-#'@param plist Either a list of \code{SpatialPolygonsDataFrame} objects or a
-#'list containing a single \code{data.frame} object.  If
-#'\code{length(plist) > 1}, then \code{plist} should contain the original
-#'paritions.  Otherwise, \code{plist} should contain a
-#'\code{SpatialPolygonsDataFrame} or a \code{data.frame} depicting the
-#'intersection between partitions.  WARNING!!  PROCEED WITH EXTREME CAUTION WHEN
-#'WORKING WITH ORIGINAL PARTITIONS.  CHANGES IN THE RGEOS INTERSECTION ROUTINE 
-#'ARE CAUSING POLYGONS TO BE DROPPED, LEADING TO INCORRECT CLUSTERS. 
+#'@param x Either a list of two or more \code{SpatialPolygonsDataFrame} objects 
+#'or a single object depicting the intersection between partitions.  
+#'Intersections can represented using either an \code{SpatialPolygonsDataFrame} 
+#'or a \code{data.frame}.  When intersections are represented as a 
+#'\code{SpatialPolygonsDataFrame}, the area of each intersection is calculated 
+#'on the fly.  When intersections are represented as a \code{data.frame}, the 
+#'area is included in the \code{data.frame} in question.  WARNING!!  PROCEED 
+#'WITH EXTREME CAUTION WHEN WORKING WITH ORIGINAL PARTITIONS.  CHANGES IN THE 
+#'RGEOS INTERSECTION ROUTINE ARE CAUSING POLYGONS TO BE DROPPED, LEADING TO 
+#'INCORRECT CLUSTERS. 
 #'
 #'@param nid A character vector containing the column names used to identify
 #'groups within each partition.  This is only required when starting with 
@@ -63,17 +65,17 @@
 #'
 #'#add placeholder for area (real areas not needed)
 #'example$AREA <- 1
-#'clustR(list(example), nid = c("A", "B"), area = "AREA")
+#'clustR(example, nid = c("A", "B"), area = "AREA")
 #'
 #'#load data frame containing intersections
 #'data(south_df)
-#'clustR(list(south_df), nid = c("ID1860", "ID2000"), area = "AREA")
+#'clustR(south_df, nid = c("ID1860", "ID2000"), area = "AREA")
 
 
-clustR <- function(plist, nid = NULL, area = NULL, thresh = .05) {
+clustR <- function(x, nid = NULL, area = NULL, thresh = .05) {
   #Step 1: Construct Intersections
-  if(length(plist) == 1) mp <- mp_int(plist, nid, area)
-  else mp <- mp_shp(plist, nid)
+  if(class(x) == "list") mp <- mp_shp(x, nid)
+  else mp <- mp_int(x, nid, area)
 
   #Step 2: Construct Affiliation Matrix
   df <- mp %>%
@@ -83,12 +85,12 @@ clustR <- function(plist, nid = NULL, area = NULL, thresh = .05) {
     dplyr::group_by(edge) %>%
     dplyr::mutate(tie = (max(std_area) >= thresh) * 1) %>%
     dplyr::filter(tie == 1) %>%
-    dplyr::mutate(vertex = paste(part, group, sep = '_'))
+    dplyr::mutate(vertex = paste(part, group, sep = "_"))
   A_df <- data.frame(model.matrix(~ factor(edge) - 1, data = df),
                      vertex = df$vertex)
   A_df <- A_df %>%
     dplyr::group_by(vertex) %>%
-    dplyr::summarise_each(dplyr::funs(sum)) %>%
+    dplyr::summarise_all(dplyr::funs(sum)) %>%
     dplyr::select(-vertex)
 
   #Step 3: Identify Components
@@ -99,47 +101,49 @@ clustR <- function(plist, nid = NULL, area = NULL, thresh = .05) {
                         comp = igraph::clusters(g)$members)
   out_df <- df %>%
     dplyr::ungroup() %>%
-    dplyr::left_join(clst_df, by = 'edge') %>%
+    dplyr::left_join(clst_df, by = "edge") %>%
     dplyr::select(edge, part, group, comp) %>%
     tidyr::spread(part, group)
   out_df
 }
 
-#'@rdname clustR
-mp_shp <- function(plist, nid) {
-  np <- length(plist)
-  axb <- rgeos::gIntersection(plist[[1]], plist[[2]],
-                       byid = TRUE, drop_not_poly = TRUE)
+#"@rdname clustR
+mp_shp <- function(x, nid) {
+  if (!all(sapply(x, class) == "SpatialPolygonsDataFrame")) stop("If x is list, each object in x should be a SpatialPolygonsDataFrame.")
+  np <- length(x)
+  axb <- rgeos::gIntersection(x[[1]], x[[2]],
+                       byid = TRUE, drop_lower_td = TRUE)
   if (np > 2) {
-    for (i in 3:length(plist)) {
-      axb <- rgeos::gIntersection(axb, plist[[i]],
-                           byid = TRUE, drop_not_poly = TRUE)
+    for (i in 3:length(x)) {
+      axb <- rgeos::gIntersection(axb, x[[i]],
+                           byid = TRUE, drop_lower_td = TRUE)
     }
   }
   area <- rgeos::gArea(axb, byid = TRUE)
   mp <- data.frame(mp = names(area), edge = 1:length(area), area)
-  df <- tidyr::separate(mp, col = mp, into = paste0('p', 1:np))
+  df <- tidyr::separate(mp, col = mp, into = paste0("p", 1:np))
   if (!is.null(nid)) {
     for (i in 1:np) {
-      df[, paste0('p', i)] <- plist[[i]]@data[df[, paste0('p', i)], nid]
+      df[, paste0("p", i)] <- x[[i]]@data[df[, paste0("p", i)], nid]
     }
   }
   df
 }
 
-#'@rdname clustR
-mp_int <- function(plist, nid, area) {
-  x <- plist[[1]]
-  if (class(x) == 'data.frame' & length(grep(area, names(x))) == 0) {
-    stop('Area field not found.')
-  }
-  if (class(x) == 'data.frame' & length(grep(area, names(x))) != 0) {
-    new_area <- x[, area]
-  }
-  if (class(x) == 'SpatialPolygonsDataFrame' & !is.null(area)) {
+#"@rdname clustR
+mp_int <- function(x, nid, area) {
+  if (!class(x) %in% c("SpatialPolygonsDataFrame", "data.frame"))
+    stop("Class of object in x is not valid.")
+  if (class(x) == "SpatialPolygonsDataFrame") {
+    if (!is.null(area)) warning("Polygon areas are being calculated directly.  Area field is ignored.")
     new_area <- rgeos::gArea(x, byid = TRUE)
   }
+  if (class(x) == "data.frame") {
+    if (is.null(area)) stop("Missing area field.")
+    if (length(grep(area, names(x))) == 0) stop("Area field not found.")
+    if (length(grep(area, names(x))) != 0) new_area <- x[, area]
+  }
   mp <- data.frame(x[, nid], edge = 1:NROW(x), new_area)
-  names(mp) <- c(nid, 'edge', 'area')
+  names(mp) <- c(nid, "edge", "area")
   mp
 }
