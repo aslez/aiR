@@ -52,8 +52,8 @@
 #'name of one group from each partition.  Each component refers to a common
 #'geography.
 #'
-#'@references Slez, A., O'Connell, H.A., and Curtis, K.J.  2014.  "A Note on the
-#'Identification of Common Geographies."
+#'@references Slez, Adam, Heather A. O'Connell, and Katherine J. Curtis.  2017.  "A Note on the
+#'Identification of Common Geographies." \emph{Sociological Methods and Research} 46(2): 288--299. 
 #'
 #'@examples
 #'#load list containing partitions

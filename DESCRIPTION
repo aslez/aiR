@@ -16,3 +16,4 @@ Imports: igraph, dplyr, tidyr, rgeos
 Packaged: 2015-01-23 18:09:48 UTC; Adam
 Author: Adam Slez [aut, cre]
 Maintainer: Adam Slez <aslez@virginia.edu>
+RoxygenNote: 6.0.1
